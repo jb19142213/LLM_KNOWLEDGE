@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dataiku v14 — LLM Endpoints & Generative AI | AI Factory Knowledge Session</title>
+<style>
+  /* ── Reset & Base ────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:        #0d1117;
+    --surface:   #161b22;
+    --surface2:  #21262d;
+    --border:    #30363d;
+    --accent:    #2563eb;
+    --accent2:   #7c3aed;
+    --accent3:   #059669;
+    --accent4:   #d97706;
+    --accent5:   #dc2626;
+    --text:      #e6edf3;
+    --muted:     #8b949e;
+    --code-bg:   #1e2530;
+    --radius:    12px;
+    --glow:      0 0 40px rgba(37,99,235,0.18);
+  }
+  html, body { height: 100%; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); }
+
+  /* ── Slide Container ─────────────────────────────────────── */
+  #deck { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
+  .slide {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    opacity: 0; pointer-events: none;
+    transform: translateX(60px);
+    transition: opacity .45s cubic-bezier(.4,0,.2,1), transform .45s cubic-bezier(.4,0,.2,1);
+    overflow-y: auto;
+    padding: 52px 72px 80px;
+  }
+  .slide.active  { opacity: 1; pointer-events: all; transform: translateX(0); }
+  .slide.exit    { opacity: 0; transform: translateX(-60px); }
+
+  /* ── Grid helpers ────────────────────────────────────────── */
+  .col2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .col3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+
+  /* ── Typography ─────────────────────────────────────────── */
+  .kicker { font-size: .78rem; letter-spacing: .15em; text-transform: uppercase; color: var(--accent); font-weight: 600; margin-bottom: 10px; }
+  h1 { font-size: clamp(2rem,4.5vw,3.6rem); font-weight: 800; line-height: 1.12; }
+  h2 { font-size: clamp(1.4rem,3vw,2.2rem); font-weight: 700; margin-bottom: 18px; }
+  h3 { font-size: 1.05rem; font-weight: 600; margin-bottom: 10px; color: var(--text); }
+  p  { line-height: 1.7; color: #c9d1d9; margin-bottom: 10px; }
+  small { font-size: .82rem; color: var(--muted); }
+
+  /* ── Gradient text ───────────────────────────────────────── */
+  .grad { background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #34d399 100%);
+          -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+  /* ── Cards ───────────────────────────────────────────────── */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 22px 24px;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .card:hover { border-color: var(--accent); box-shadow: var(--glow); }
+  .card.green  { border-top: 3px solid var(--accent3); }
+  .card.blue   { border-top: 3px solid var(--accent); }
+  .card.purple { border-top: 3px solid var(--accent2); }
+  .card.amber  { border-top: 3px solid var(--accent4); }
+  .card.red    { border-top: 3px solid var(--accent5); }
+
+  /* ── Tags ────────────────────────────────────────────────── */
+  .tag {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: .72rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+    padding: 3px 10px; border-radius: 20px; border: 1px solid currentColor; margin-right: 6px; margin-bottom: 6px;
+  }
+  .tag.blue   { color: #60a5fa; border-color: #60a5fa33; background: #60a5fa12; }
+  .tag.green  { color: #34d399; border-color: #34d39933; background: #34d39912; }
+  .tag.purple { color: #a78bfa; border-color: #a78bfa33; background: #a78bfa12; }
+  .tag.amber  { color: #fbbf24; border-color: #fbbf2433; background: #fbbf2412; }
+  .tag.red    { color: #f87171; border-color: #f8717133; background: #f8717112; }
+
+  /* ── Tables ──────────────────────────────────────────────── */
+  .tbl-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); margin-top: 4px; }
+  table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+  th { background: var(--surface2); color: var(--muted); font-weight: 600; text-align: left;
+       padding: 10px 14px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  td { padding: 9px 14px; border-bottom: 1px solid #1c2128; color: #c9d1d9; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #ffffff07; }
+  td:first-child { font-weight: 600; color: var(--text); }
+
+  /* ── Code blocks ─────────────────────────────────────────── */
+  pre {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 16px 20px; overflow-x: auto;
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    font-size: .78rem; line-height: 1.65; color: #e2e8f0; margin: 10px 0;
+  }
+  code { font-family: inherit; }
+  .kw { color: #c792ea; }
+  .fn { color: #82aaff; }
+  .st { color: #c3e88d; }
+  .cm { color: #546e7a; font-style: italic; }
+  .nm { color: #f78c6c; }
+  .op { color: #89ddff; }
+
+  /* ── Timeline ────────────────────────────────────────────── */
+  .timeline { display: flex; flex-direction: column; gap: 0; }
+  .tl-item { display: flex; gap: 20px; position: relative; }
+  .tl-item::before { content:''; position:absolute; left:19px; top:38px; bottom:-1px; width:2px; background:var(--border); }
+  .tl-item:last-child::before { display: none; }
+  .tl-dot { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+             font-weight: 700; font-size: .8rem; flex-shrink: 0; border: 2px solid; margin-top: 4px; }
+  .tl-body { padding-bottom: 22px; flex: 1; }
+  .tl-date { font-size: .75rem; color: var(--muted); font-weight: 500; margin-bottom: 3px; }
+  .tl-title { font-weight: 700; font-size: .95rem; margin-bottom: 5px; }
+  .tl-desc { font-size: .82rem; color: #8b949e; line-height: 1.6; }
+
+  /* ── Progress bar ────────────────────────────────────────── */
+  #progress { position: fixed; top: 0; left: 0; height: 3px; background: linear-gradient(90deg,#2563eb,#7c3aed,#059669); transition: width .4s; z-index: 100; }
+
+  /* ── Nav ─────────────────────────────────────────────────── */
+  #nav { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+         display: flex; align-items: center; gap: 12px; z-index: 100;
+         background: #ffffff0d; border: 1px solid var(--border);
+         backdrop-filter: blur(12px); border-radius: 40px; padding: 8px 20px; }
+  .nav-btn {
+    width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border);
+    background: var(--surface2); color: var(--text); cursor: pointer; font-size: 1rem;
+    display: flex; align-items: center; justify-content: center; transition: all .2s;
+  }
+  .nav-btn:hover { background: var(--accent); border-color: var(--accent); }
+  .nav-btn:disabled { opacity: .3; cursor: not-allowed; }
+  #slide-counter { font-size: .78rem; color: var(--muted); min-width: 60px; text-align: center; }
+  .dot-nav { display: flex; gap: 6px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border); cursor: pointer; transition: all .3s; }
+  .dot.active { background: var(--accent); transform: scale(1.4); }
+
+  /* ── Keyboard hint ───────────────────────────────────────── */
+  #kb-hint { position: fixed; bottom: 28px; right: 28px; font-size: .7rem; color: var(--muted);
+              background: #ffffff08; border: 1px solid var(--border); border-radius: 8px; padding: 5px 10px; }
+
+  /* ── Section number badge ────────────────────────────────── */
+  .sec-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 48px; height: 48px; border-radius: 12px;
+    font-weight: 800; font-size: 1.2rem; margin-bottom: 18px;
+    background: linear-gradient(135deg,var(--accent),var(--accent2));
+  }
+
+  /* ── List ────────────────────────────────────────────────── */
+  ul.styled { list-style: none; display: flex; flex-direction: column; gap: 9px; }
+  ul.styled li { display: flex; gap: 10px; align-items: flex-start; font-size: .88rem; color: #c9d1d9; line-height: 1.55; }
+  ul.styled li::before { content: '▸'; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+
+  /* ── Diagram box ─────────────────────────────────────────── */
+  .diagram { background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px;
+             padding: 16px; font-family: monospace; font-size: .73rem; line-height: 1.7;
+             color: #94a3b8; white-space: pre; overflow-x: auto; }
+
+  /* ── Hero slide bg ───────────────────────────────────────── */
+  .hero-bg {
+    background: radial-gradient(ellipse 80% 60% at 70% 50%, #1d2d4e 0%, #0d1117 60%);
+  }
+  .hero-bg::before {
+    content: ''; position: absolute; inset: 0;
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%232563eb' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    pointer-events: none;
+  }
+
+  /* ── Checklist ───────────────────────────────────────────── */
+  .checklist { display: flex; flex-direction: column; gap: 8px; }
+  .check-item { display: flex; gap: 10px; align-items: flex-start; font-size: .84rem; color: #c9d1d9; }
+  .check-box { width: 18px; height: 18px; border: 2px solid var(--accent3); border-radius: 4px;
+               flex-shrink: 0; margin-top: 1px; display: flex; align-items: center; justify-content: center; }
+  .check-box.done::after { content: '✓'; color: var(--accent3); font-size: .72rem; font-weight: 700; }
+
+  /* ── Pill stat ───────────────────────────────────────────── */
+  .stat-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+  .stat { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px;
+          padding: 12px 18px; text-align: center; flex: 1; min-width: 100px; }
+  .stat .val { font-size: 1.6rem; font-weight: 800; }
+  .stat .lbl { font-size: .7rem; color: var(--muted); margin-top: 2px; }
+
+  /* ── Responsive ──────────────────────────────────────────── */
+  @media (max-width: 768px) {
+    .slide { padding: 36px 28px 80px; }
+    .col2, .col3 { grid-template-columns: 1fr; }
+    h1 { font-size: 1.8rem; }
+  }
+</style>
+</head>
+<body>
+
+<div id="progress"></div>
+
+<div id="deck">
+
+  <!-- ╔═══════════════════════════════════════════════╗ -->
+  <!-- ║  SLIDE 0 — TITLE                             ║ -->
+  <!-- ╚═══════════════════════════════════════════════╝ -->
+  <div class="slide active hero-bg" id="s0">
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center;max-width:780px;">
+      <div class="kicker">AI Factory · Knowledge Session · May 2026</div>
+      <h1 style="margin-bottom:20px;">
+        LLM Endpoints &amp; <span class="grad">Generative AI</span><br/>in Dataiku v14
+      </h1>
+      <p style="font-size:1.1rem;color:#94a3b8;max-width:560px;margin-bottom:32px;">
+        A practical guide covering new tools, model types, token economics, live code patterns, and things to remember.
+      </p>
+      <div class="stat-row">
+        <div class="stat"><div class="val grad">8</div><div class="lbl">Sections</div></div>
+        <div class="stat"><div class="val" style="color:#34d399;">v14.5</div><div class="lbl">DSS Version</div></div>
+        <div class="stat"><div class="val" style="color:#a78bfa;">5+</div><div class="lbl">Code Examples</div></div>
+        <div class="stat"><div class="val" style="color:#fbbf24;">10+</div><div class="lbl">Model Providers</div></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:24px;">
+      <span class="tag blue">Updates Timeline</span>
+      <span class="tag purple">Model Types</span>
+      <span class="tag green">Use-Case Guide</span>
+      <span class="tag amber">Tokens &amp; Cost</span>
+      <span class="tag blue">Live Code</span>
+      <span class="tag red">Error Handling</span>
+    </div>
+  </div>
+
+  <!-- ╔═══════════════════════════════════════════════╗ -->
+  <!-- ║  SLIDE 1 — AGENDA                            ║ -->
+  <!-- ╚═══════════════════════════════════════════════╝ -->
+  <div class="slide" id="s1">
+    <div class="kicker">Agenda</div>
+    <h2>What we'll cover today</h2>
+    <div class="col2" style="margin-top:8px;">
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div class="card blue" style="display:flex;gap:14px;align-items:flex-start;">
+          <div style="font-size:1.5rem;">🚀</div>
+          <div><h3>1. Dataiku v14 Updates</h3><small>Timeline of LLM feature drops from v14.0 to v14.5</small></div>
+        </div>
+        <div class="card purple" style="display:flex;gap:14px;align-items:flex-start;">
+          <div style="font-size:1.5rem;">🤖</div>
+          <div><h3>2. Generative Model Types</h3><small>Chat, Embedding, Reranking, Image, VLM — explained clearly</small></div>
+        </div>
+        <div class="card green" style="display:flex;gap:14px;align-items:flex-start;">
+          <div style="font-size:1.5rem;">🎯</div>
+          <div><h3>3. Model Selection (AIF)</h3><small>Decision table: which model for which use-case</small></div>
+        </div>
+        <div class="card amber" style="display:flex;gap:14px;align-items:flex-start;">
+          <div style="font-size:1.5rem;">💰</div>
+          <div><h3>4. Tokens, Security &amp; Cost</h3><small>How tokens work, cost formula, Dataiku governance</small></div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div class="card blue" style="display:flex;gap:14px;align-items:flex-start;">
+          <div style="font-size:1.5rem;">💻</div>
+          <div><h3>5. Live Code Examples</h3><small>Chat call, embeddings, JSON mode, multi-turn conversations</small></div>
+        </div>
+        <div class="card red" style="display:flex;gap:14px;align-items:flex-start;">
+          <div style="font-size:1.5rem;">⚠️</div>
+          <div><h3>6. Common Errors</h3><small>Auth, rate limits, context overflow — and how to fix them</small></div>
+        </div>
+        <div class="card purple" style="display:flex;gap:14px;align-items:flex-start;">
+          <div style="font-size:1.5rem;">🎓</div>
+          <div><h3>7. Dataiku Academy</h3><small>Official certifications and learning paths</small></div>
+        </div>
+        <div class="card green" style="display:flex;gap:14px;align-items:flex-start;">
+          <div style="font-size:1.5rem;">✅</div>
+          <div><h3>8. Things to Remember</h3><small>Quick-reference checklist for every GenAI project</small></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ╔═══════════════════════════════════════════════╗ -->
+  <!-- ║  SLIDE 2 — LLM MESH CONCEPT                  ║ -->
+  <!-- ╚═══════════════════════════════════════════════╝ -->
+  <div class="slide" id="s2">
+    <div class="kicker">Section 1 — Dataiku v14 Updates</div>
+    <h2>What is the LLM Mesh?</h2>
+    <div class="col2">
+      <div>
+        <p>The <strong>LLM Mesh</strong> is Dataiku's unified layer that lets you call <em>any</em> AI model from <em>any</em> provider through a single consistent API — inside your Flow, notebooks, agents, and APIs.</p>
+        <div class="diagram">┌─────────────────────────────────────────┐
+│           DATAIKU LLM MESH              │
+│                                         │
+│  OpenAI  Azure  Bedrock  Vertex  Local  │
+│    ↓       ↓      ↓       ↓       ↓    │
+│  ┌─────── Unified Mesh Layer ────────┐  │
+│  │  Rate Limit · Quota · Audit · $  │  │
+│  └───────────────┬───────────────────┘  │
+│                  │                      │
+│  Prompt   Agents  Flow   Knowledge API  │
+│  Studio   Tools   Recipe  Banks   Mesh  │
+└─────────────────────────────────────────┘</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div class="card blue"><h3>🔌 10+ Providers</h3><p style="font-size:.85rem;">OpenAI, Azure Foundry, AWS Bedrock, Google Vertex, Snowflake Cortex, Databricks, NVIDIA NIM, HuggingFace local</p></div>
+        <div class="card green"><h3>⚖️ Governance Built-In</h3><p style="font-size:.85rem;">Quotas, rate limiting, audit logs, per-user/group access control — all managed by admins</p></div>
+        <div class="card purple"><h3>🎯 One API, All Models</h3><p style="font-size:.85rem;">Same Python code, regardless of provider. Swap models without changing your recipe or notebook.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ╔═══════════════════════════════════════════════╗ -->
+  <!-- ║  SLIDE 3 — V14 TIMELINE                      ║ -->
+  <!-- ╚═══════════════════════════════════════════════╝ -->
+  <div class="slide" id="s3">
+    <div class="kicker">Section 1 — Dataiku v14 Updates</div>
+    <h2>v14 LLM Feature Timeline</h2>
+    <div class="col2" style="align-items:start;">
+      <div class="timeline">
+        <div class="tl-item">
+          <div class="tl-dot" style="color:#60a5fa;border-color:#60a5fa;">14.0</div>
+          <div class="tl-body">
+            <div class="tl-date">June 27, 2025</div>
+            <div class="tl-title">Foundation</div>
+            <div class="tl-desc">Auto-throttling for LLM connections · Enhanced document embedding (PDF/DOCX text-only) · Smart Sync / Upsert modes · Code Tool for agents · Gen AI top-bar menu</div>
+          </div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot" style="color:#a78bfa;border-color:#a78bfa;">14.1</div>
+          <div class="tl-body">
+            <div class="tl-date">August 12, 2025</div>
+            <div class="tl-title">Custom LLMs &amp; New Tools</div>
+            <div class="tl-desc">Custom LLM Python plugins · OpenAI o3/o4-mini · Calculator &amp; API Endpoint agent tools · Similarity threshold for RAG · Agent History tab</div>
+          </div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot" style="color:#34d399;border-color:#34d399;">14.2</div>
+          <div class="tl-body">
+            <div class="tl-date">October 17, 2025</div>
+            <div class="tl-title">Agent Hub &amp; MCP</div>
+            <div class="tl-desc">Agent Hub (org-wide agent workspace) · MCP (Model Context Protocol) · NVIDIA NIM support · AI Portfolio automated tagging (ML/GenAI/Agentic badges)</div>
+          </div>
+        </div>
+      </div>
+      <div class="timeline">
+        <div class="tl-item">
+          <div class="tl-dot" style="color:#fbbf24;border-color:#fbbf24;">14.3</div>
+          <div class="tl-body">
+            <div class="tl-date">December 11, 2025</div>
+            <div class="tl-title">Agent Evaluation &amp; RAG</div>
+            <div class="tl-desc">Agent Evaluation recipe &amp; store · Extract Content recipe · Remote MCP · Dynamic RAG filters · Azure AI Foundry connection · Reranking</div>
+          </div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot" style="color:#f87171;border-color:#f87171;">14.4</div>
+          <div class="tl-body">
+            <div class="tl-date">February 9, 2026</div>
+            <div class="tl-title">Structured Agents &amp; Assistants</div>
+            <div class="tl-desc">Structured Visual Agents · Human-in-loop approval · Agent Review · Flow Assistant · SQL Assistant · Semantic Models · Slack integration · A2A server</div>
+          </div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot" style="color:#c4b5fd;border-color:#c4b5fd;background:#1e1433;">14.5</div>
+          <div class="tl-body">
+            <div class="tl-date">April 14, 2026 ✨ Latest</div>
+            <div class="tl-title">Agent Logging &amp; Claude Code</div>
+            <div class="tl-desc">Agent Logging to datasets · Claude Code in Code Studios · Extract structured fields from documents · External Vector Stores · GPT-5.4, Qwen 3 Coder</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ╔═══════════════════════════════════════════════╗ -->
+  <!-- ║  SLIDE 4 — PROVIDER MATRIX                   ║ -->
+  <!-- ╚═══════════════════════════════════════════════╝ -->
+  <div class="slide" id="s4">
+    <div class="kicker">Section 1 — Dataiku v14 Updates</div>
+    <h2>Supported Providers &amp; Model Types</h2>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Provider</th><th>Completion</th><th>Embedding</th><th>Image Gen</th><th>Reranking</th><th>Best for</th></tr></thead>
+        <tbody>
+          <tr><td>OpenAI</td><td>✅ GPT-4o, GPT-5.x</td><td>✅ text-embedding-3</td><td>✅ gpt-image-1.5</td><td>—</td><td>General purpose, JSON output</td></tr>
+          <tr><td>Azure OpenAI / Foundry</td><td>✅</td><td>✅</td><td>✅</td><td>—</td><td>EU data residency, enterprise</td></tr>
+          <tr><td>AWS Bedrock</td><td>✅ Claude 4.x, Nova</td><td>—</td><td>—</td><td>—</td><td>AWS-native workloads</td></tr>
+          <tr><td>Anthropic</td><td>✅ Claude 4.5 Sonnet</td><td>—</td><td>—</td><td>—</td><td>Long documents, coding</td></tr>
+          <tr><td>Google Vertex AI</td><td>✅ Gemini 2.5 Pro/Flash</td><td>✅ text-embedding-005</td><td>✅ Imagen 4</td><td>—</td><td>GCP workloads, multimodal</td></tr>
+          <tr><td>Snowflake Cortex</td><td>✅</td><td>—</td><td>—</td><td>—</td><td>Snowflake-native pipelines</td></tr>
+          <tr><td>Databricks Mosaic</td><td>✅ GPT-5, Gemini, Claude</td><td>✅</td><td>—</td><td>—</td><td>Databricks-native workloads</td></tr>
+          <tr><td>Local HuggingFace (vLLM)</td><td>✅ Llama 4, Qwen 3</td><td>✅ BGE</td><td>—</td><td>✅ BGE-reranker</td><td>Air-gapped, on-prem</td></tr>
+          <tr><td>NVIDIA NIM</td><td>✅</td><td>✅</td><td>—</td><td>✅ Nemotron</td><td>GPU-optimised inference</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin-top:14px;font-size:.82rem;"><strong>How to access:</strong> Administration → <span class="tag blue">LLM Connections</span> → Add Connection → Select provider</p>
+  </div>
+
+  <!-- ╔═══════════════════════════════════════════════╗ -->
+  <!-- ║  SLIDE 5 — MODEL TYPES                       ║ -->
+  <!-- ╚═══════════════════════════════════════════════╝ -->
+  <div class="slide" id="s5">
+    <div class="kicker">Section 2 — Generative Model Types</div>
+    <h2>Five Types of Generative Models</h2>
+    <div class="col3" style="margin-bottom:16px;">
+      <div class="card blue">
+        <h3>💬 Chat / Completion</h3>
+        <p style="font-size:.82rem;"><strong>Input:</strong> Text prompt<br/><strong>Output:</strong> Text response</p>
+        <div style="margin-top:10px;font-size:.8rem;color:var(--muted);">GPT-4o · Claude 4.5 · Gemini 2.5 · Llama 4</div>
+        <div style="margin-top:8px;"><span class="tag blue">Summarisation</span><span class="tag blue">Classification</span></div>
+      </div>
+      <div class="card purple">
+        <h3>🔢 Embedding</h3>
+        <p style="font-size:.82rem;"><strong>Input:</strong> Text<br/><strong>Output:</strong> Float vector [1536 dims]</p>
+        <div style="margin-top:10px;font-size:.8rem;color:var(--muted);">text-embedding-3-large · BGE-large · Gecko</div>
+        <div style="margin-top:8px;"><span class="tag purple">Semantic Search</span><span class="tag purple">RAG</span></div>
+      </div>
+      <div class="card green">
+        <h3>📊 Reranking</h3>
+        <p style="font-size:.82rem;"><strong>Input:</strong> Query + passages<br/><strong>Output:</strong> Relevance scores</p>
+        <div style="margin-top:10px;font-size:.8rem;color:var(--muted);">BGE-reranker-v2 · Cohere Rerank · Nemotron</div>
+        <div style="margin-top:8px;"><span class="tag green">RAG quality</span><span class="tag green">Search ordering</span></div>
+      </div>
+    </div>
+    <div class="col2">
+      <div class="card amber">
+        <h3>🎨 Image Generation</h3>
+        <p style="font-size:.82rem;"><strong>Input:</strong> Text prompt<br/><strong>Output:</strong> PNG / JPEG image</p>
+        <div style="margin-top:6px;font-size:.8rem;color:var(--muted);">gpt-image-1.5 (OpenAI) · Imagen 4 (Vertex)</div>
+        <span class="tag amber">Agent Image Tool (v14.5)</span>
+      </div>
+      <div class="card red">
+        <h3>👁️ Vision / Multimodal (VLM)</h3>
+        <p style="font-size:.82rem;"><strong>Input:</strong> Image + text<br/><strong>Output:</strong> Text description / analysis</p>
+        <div style="margin-top:6px;font-size:.8rem;color:var(--muted);">GPT-4o · Claude 3.5 · Qwen-2.5-VL (local)</div>
+        <span class="tag red">PDF visual extraction</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ╔═══════════════════════════════════════════════╗ -->
+  <!-- ║  SLIDE 6 — USE-CASE TABLE                    ║ -->
+  <!-- ╚═══════════════════════════════════════════════╝ -->
+  <div class="slide" id="s6">
+    <div class="kicker">Section 3 — AIF Use-Case Guide</div>
+    <h2>Which Model for Which Job?</h2>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>AIF Use-Case</th><th>Model Type</th><th>Recommended Model</th><th>Key Setting</th></tr></thead>
+        <tbody>
+          <tr><td>📄 Document Summarisation</td><td><span class="tag blue">Chat</span></td><td>GPT-4o / Claude 3.5 Sonnet</td><td>Long context, high max_tokens</td></tr>
+          <tr><td>🔍 Entity / Field Extraction</td><td><span class="tag blue">Chat</span></td><td>GPT-4o mini</td><td>JSON mode, structured output</td></tr>
+          <tr><td>🏷️ Classification / Labelling</td><td><span class="tag blue">Chat</span></td><td>GPT-4o mini (cheapest)</td><td>Few-shot examples in system prompt</td></tr>
+          <tr><td>🔎 Semantic Search</td><td><span class="tag purple">Embedding</span></td><td>text-embedding-3-large</td><td>Cosine similarity threshold</td></tr>
+          <tr><td>📚 RAG Q&amp;A on Documents</td><td><span class="tag purple">Embed</span> + <span class="tag green">Rerank</span> + <span class="tag blue">Chat</span></td><td>BGE embed → BGE rerank → GPT-4o</td><td>Knowledge Bank in Dataiku</td></tr>
+          <tr><td>💬 Conversational Chatbot</td><td><span class="tag blue">Chat</span></td><td>GPT-4o via Agent Hub</td><td>Multi-turn memory, streaming</td></tr>
+          <tr><td>💻 Code Generation</td><td><span class="tag blue">Chat</span></td><td>GPT-5.x Codex / Claude 4</td><td>Code-specific fine-tuned models</td></tr>
+          <tr><td>📑 PDF Table / Visual Extraction</td><td><span class="tag red">VLM</span></td><td>GPT-4o vision / Qwen-2.5-VL</td><td>Embed Docs recipe, OCR fallback</td></tr>
+          <tr><td>🤖 Multi-step Process Automation</td><td><span class="tag blue">Chat</span> + Agent Tools</td><td>GPT-4o + Dataiku Structured Agent</td><td>Human-in-loop approval (v14.4)</td></tr>
+          <tr><td>🎨 Generate Report Images</td><td><span class="tag amber">Image Gen</span></td><td>gpt-image-1.5 / Imagen 4</td><td>Agent Image Tool (v14.5)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ╔═══════════════════════════════════════════════╗ -->
+  <!-- ║  SLIDE 7 — TOKENS EXPLAINED                  ║ -->
+  <!-- ╚═══════════════════════════════════════════════╝ -->
+  <div class="slide" id="s7">
+    <div class="kicker">Section 4 — Tokens, Security &amp; Cost</div>
+    <h2>Understanding Tokens</h2>
+    <div class="col2">
+      <div>
+        <div class="card" style="margin-bottom:16px;">
+          <h3>What is a token?</h3>
+          <p style="font-size:.85rem;">A token is the smallest unit of text an LLM reads. Roughly <strong>¾ of a word</strong> or <strong>4 characters</strong>.</p>
+          <pre style="margin-top:12px;font-size:.76rem;">"Hello, how are you today?"
+ ↓ tokenised as ↓
+[Hello] [,] [how] [are] [you] [today] [?]
+= 7 tokens</pre>
+        </div>
+        <div class="card">
+          <h3>Two types you pay for</h3>
+          <div style="display:flex;gap:12px;margin-top:8px;">
+            <div style="flex:1;background:#1a2436;border-radius:8px;padding:12px;text-align:center;">
+              <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;">Prompt (Input)</div>
+              <div style="font-size:1.2rem;font-weight:700;color:#60a5fa;margin:4px 0;">↑ IN</div>
+              <div style="font-size:.78rem;color:#94a3b8;">System prompt + user message + history + context</div>
+            </div>
+            <div style="flex:1;background:#1a2d26;border-radius:8px;padding:12px;text-align:center;">
+              <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;">Completion (Output)</div>
+              <div style="font-size:1.2rem;font-weight:700;color:#34d399;margin:4px 0;">↓ OUT</div>
+              <div style="font-size:.78rem;color:#94a3b8;">The model's generated response</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="card amber" style="margin-bottom:16px;">
+          <h3>💡 Cost Formula</h3>
+          <div style="background:var(--code-bg);border-radius:8px;padding:14px;margin-top:10px;font-size:.82rem;line-height:1.8;font-family:monospace;">
+            Cost = (prompt_tokens × P<sub>in</sub>)<br/>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ (completion_tokens × P<sub>out</sub>)
+          </div>
+        </div>
+        <div class="card">
+          <h3>Approximate Pricing (May 2026)</h3>
+          <table style="font-size:.78rem;margin-top:8px;">
+            <thead><tr><th>Model</th><th>Input /1M</th><th>Output /1M</th></tr></thead>
+            <tbody>
+              <tr><td>GPT-4o</td><td style="color:#60a5fa;">$2.50</td><td style="color:#34d399;">$10.00</td></tr>
+              <tr><td>GPT-4o mini</td><td style="color:#60a5fa;">$0.15</td><td style="color:#34d399;">$0.60</td></tr>
+              <tr><td>Claude 3.5 Sonnet</td><td style="color:#60a5fa;">$3.00</td><td style="color:#34d399;">$15.00</td></tr>
+              <tr><td>Gemini 2.5 Flash</td><td style="color:#60a5fa;">$0.075</td><td style="color:#34d399;">$0.30</td></tr>
+              <tr><td>text-embedding-3-lg</td><td style="color:#60a5fa;">$0.13</td><td style="color:#94a3b8;">N/A</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ╔═══════════════════════════════════════════════╗ -->
+  <!-- ║  SLIDE 8 — SECURITY & COST CONTROL           ║ -->
+  <!-- ╚═══════════════════════════════════════════════╝ -->
+  <div class="slide" id="s8">
+    <div class="kicker">Section 4 — Tokens, Security &amp; Cost</div>
+    <h2>Security &amp; Cost Control in Dataiku v14</h2>
+    <div class="col2">
+      <div>
+        <h3 style="margin-bottom:12px;">🔒 Security Layer</h3>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div class="card" style="padding:14px 16px;"><span class="tag red">Risk</span> API key exposure &nbsp;→&nbsp; <strong style="color:#34d399;">Keys stored encrypted in Dataiku Connections</strong></div>
+          <div class="card" style="padding:14px 16px;"><span class="tag red">Risk</span> PII sent to cloud LLM &nbsp;→&nbsp; <strong style="color:#34d399;">Guardrails: PII Detection blocks/masks before send</strong></div>
+          <div class="card" style="padding:14px 16px;"><span class="tag red">Risk</span> Prompt injection &nbsp;→&nbsp; <strong style="color:#34d399;">Guardrails: Prompt Injection Detection</strong></div>
+          <div class="card" style="padding:14px 16px;"><span class="tag red">Risk</span> Data residency &nbsp;→&nbsp; <strong style="color:#34d399;">Use Azure EU / Bedrock / local HF</strong></div>
+          <div class="card" style="padding:14px 16px;"><span class="tag red">Risk</span> Unauthorised model use &nbsp;→&nbsp; <strong style="color:#34d399;">Connection-level group permissions</strong></div>
+        </div>
+      </div>
+      <div>
+        <h3 style="margin-bottom:12px;">💰 v14 Cost Control Features</h3>
+        <ul class="styled">
+          <li><strong>LLM Quotas</strong> — Max tokens per user/group per day or week (Admin → LLM → Quotas)</li>
+          <li><strong>Rate Limiting</strong> — Throttle requests/second to avoid provider 429 errors</li>
+          <li><strong>Cost Visibility</strong> — Per-project, per-model cost breakdown for admins</li>
+          <li><strong>$0 exemption</strong> — Free queries bypass quota (v14.2+)</li>
+          <li><strong>Prompt Studio</strong> — Shows live cost per run before you scale</li>
+          <li><strong>Audit Logs</strong> — Every LLM call logged: who, what model, how many tokens</li>
+        </ul>
+        <div class="card green" style="margin-top:16px;">
+          <h3>💡 Rule of Thumb</h3>
+          <p style="font-size:.83rem;">A typical RAG query (2k prompt + 500 output tokens on GPT-4o mini) ≈ <strong style="color:#34d399;">$0.000075 per call</strong>. At 10,000 calls/day = <strong>$0.75/day</strong>.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ╔═══════════════════════════════════════════════╗ -->
+  <!-- ║  SLIDE 9 — CODE: BASIC CHAT CALL             ║ -->
+  <!-- ╚═══════════════════════════════════════════════╝ -->
+  <div class="slide" id="s9">
+    <div class="kicker">Section 5 — Live Code Examples</div>
+    <h2>Example 1: Basic Chat Completion</h2>
+    <p style="margin-bottom:12px;">No third-party SDK needed — use the <code>dataiku</code> package available in every Dataiku code environment.</p>
+    <pre><code><span class="kw">import</span> dataiku
+
+<span class="cm"># Step 1: Get an LLM handle (format: "connection_name:model_id")</span>
+client <span class="op">=</span> dataiku.api_client()
+llm    <span class="op">=</span> client.get_llm(<span class="st">"openai:gpt-4o"</span>)
+
+<span class="cm"># Step 2: Build the query</span>
+query <span class="op">=</span> llm.new_completion()
+query.<span class="fn">with_message</span>(<span class="st">"You are a helpful data analyst assistant."</span>, role<span class="op">=</span><span class="st">"system"</span>)
+query.<span class="fn">with_message</span>(<span class="st">"Explain what a vector embedding is in 2 sentences."</span>)
+
+<span class="cm"># Step 3: Execute and read the response</span>
+response <span class="op">=</span> query.<span class="fn">execute</span>()
+
+<span class="fn">print</span>(response.text)
+<span class="fn">print</span>(<span class="st">f"Prompt tokens    : {response.usage['prompt_tokens']}"</span>)
+<span class="fn">print</span>(<span class="st">f"Completion tokens: {response.usage['completion_tokens']}"</span>)
+<span class="fn">print</span>(<span class="st">f"Total tokens     : {response.usage['total_tokens']}"</span>)</code></pre>
+    <div class="col2" style="margin-top:12px;">
+      <div class="card green"><h3>✅ Output</h3><p style="font-size:.83rem;font-family:monospace;">A vector embedding is a list of floating-point numbers that captures the semantic meaning of text, where similar texts produce vectors that are mathematically close together in high-dimensional space.<br/><br/>Prompt: 42 | Completion: 38 | Total: 80</p></div>
+      <div class="card amber"><h3>💡 Key points</h3><ul class="styled"><li>LLM ID format: <code>"connection:model"</code></li><li>System prompt sets behaviour</li><li>Token counts returned per call</li><li>No API key in your code — ever</li></ul></div>
+    </div>
+  </div>
+
+  <!-- ╔═══════════════════════════════════════════════╗ -->
+  <!-- ║  SLIDE 10 — CODE: EMBEDDINGS & JSON          ║ -->
+  <!-- ╚═══════════════════════════════════════════════╝ -->
+  <div class="slide" id="s10">
+    <div class="kicker">Section 5 — Live Code Examples</div>
+    <h2>Example 2: Embeddings &amp; JSON Mode</h2>
+    <div class="col2">
+      <div>
+        <h3 style="margin-bottom:8px;">Embedding Generation</h3>
+        <pre style="font-size:.72rem;"><code><span class="kw">import</span> dataiku
+
+embed_llm <span class="op">=</span> client.<span class="fn">get_llm</span>(<span class="st">"openai:text-embedding-3-large"</span>)
+
+query <span class="op">=</span> embed_llm.<span class="fn">new_embeddings</span>()
+query.<span class="fn">add_text</span>(<span class="st">"quarterly revenue review"</span>)
+query.<span class="fn">add_text</span>(<span class="st">"AI Factory deployment pipeline"</span>)
+
+resp <span class="op">=</span> query.<span class="fn">execute</span>()
+
+<span class="kw">for</span> emb <span class="kw">in</span> resp.<span class="fn">get_embeddings</span>():
+    <span class="fn">print</span>(<span class="st">f"Vector: [{emb[0]:.4f}, {emb[1]:.4f}, ...]"</span>)
+    <span class="fn">print</span>(<span class="st">f"Dims  : {len(emb)}"</span>)</code></pre>
+        <div class="card green" style="margin-top:10px;padding:12px 14px;">
+          <small>Output: <code>[0.0234, -0.1412, 0.8891, ...] (1536-dim)</code></small>
+        </div>
+      </div>
+      <div>
+        <h3 style="margin-bottom:8px;">Structured JSON Output</h3>
+        <pre style="font-size:.72rem;"><code><span class="kw">import</span> json
+
+llm <span class="op">=</span> client.<span class="fn">get_llm</span>(<span class="st">"openai:gpt-4o-mini"</span>)
+q   <span class="op">=</span> llm.<span class="fn">new_completion</span>()
+q.<span class="fn">with_message</span>(<span class="st">"Reply with valid JSON only."</span>,
+               role<span class="op">=</span><span class="st">"system"</span>)
+q.<span class="fn">with_message</span>(<span class="st">"Extract: company, year, revenue from: "</span>
+               <span class="st">'Acme Corp reported $4.2M in 2025.'</span>)
+
+<span class="cm"># Enable JSON mode</span>
+q.settings[<span class="st">"responseFormat"</span>] <span class="op">=</span> {<span class="st">"type"</span>: <span class="st">"json_object"</span>}
+
+resp   <span class="op">=</span> q.<span class="fn">execute</span>()
+parsed <span class="op">=</span> json.<span class="fn">loads</span>(resp.text)
+<span class="fn">print</span>(parsed)</code></pre>
+        <div class="card amber" style="margin-top:10px;padding:12px 14px;">
+          <small>Output:<br/><code>{"company": "Acme Corp", "year": 2025, "revenue": 4200000}</code></small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ╔═══════════════════════════════════════════════╗ -->
+  <!-- ║  SLIDE 11 — CODE: MULTI-TURN                 ║ -->
+  <!-- ╚═══════════════════════════════════════════════╝ -->
+  <div class="slide" id="s11">
+    <div class="kicker">Section 5 — Live Code Examples</div>
+    <h2>Example 3: Multi-turn Conversation (v14.5+)</h2>
+    <pre><code><span class="kw">import</span> dataiku
+
+client  <span class="op">=</span> dataiku.<span class="fn">api_client</span>()
+llm     <span class="op">=</span> client.<span class="fn">get_llm</span>(<span class="st">"openai:gpt-4o"</span>)
+
+<span class="cm"># ── Turn 1 ──────────────────────────────────────────────────</span>
+q1 <span class="op">=</span> llm.<span class="fn">new_completion</span>()
+q1.<span class="fn">with_message</span>(<span class="st">"You are a concise Dataiku expert."</span>, role<span class="op">=</span><span class="st">"system"</span>)
+q1.<span class="fn">with_message</span>(<span class="st">"What is a Knowledge Bank in Dataiku?"</span>)
+r1 <span class="op">=</span> q1.<span class="fn">execute</span>()
+
+<span class="fn">print</span>(<span class="st">"Turn 1:"</span>, r1.text)
+
+<span class="cm"># ── Turn 2: use prepare_followup() — new in v14.5 ───────────</span>
+q2 <span class="op">=</span> r1.<span class="fn">prepare_followup</span>()   <span class="cm"># automatically carries conversation history</span>
+q2.<span class="fn">with_message</span>(<span class="st">"How do I build one from PDF documents?"</span>)
+r2 <span class="op">=</span> q2.<span class="fn">execute</span>()
+
+<span class="fn">print</span>(<span class="st">"Turn 2:"</span>, r2.text)</code></pre>
+    <div class="col2" style="margin-top:14px;">
+      <div class="card blue">
+        <h3>🆕 prepare_followup() — v14.5</h3>
+        <ul class="styled">
+          <li>Automatically carries previous messages into the next query</li>
+          <li>No manual history management needed</li>
+          <li>Works with streamed responses too: <code>execute_streamed(collect_response=True)</code></li>
+        </ul>
+      </div>
+      <div class="card purple">
+        <h3>🤖 Prompt Recipe (No-code batch)</h3>
+        <ul class="styled">
+          <li>Flow → Add Recipe → Gen AI → Prompt</li>
+          <li>Runs LLM on every row of a dataset</li>
+          <li>Use <code>{{column_name}}</code> in prompt templates</li>
+          <li>Shows live cost estimate before you run</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ╔═══════════════════════════════════════════════╗ -->
+  <!-- ║  SLIDE 12 — ERRORS TABLE                     ║ -->
+  <!-- ╚═══════════════════════════════════════════════╝ -->
+  <div class="slide" id="s12">
+    <div class="kicker">Section 6 — Common Errors</div>
+    <h2>Common Errors &amp; How to Fix Them</h2>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Error</th><th>HTTP / Code</th><th>Cause</th><th>Fix</th></tr></thead>
+        <tbody>
+          <tr><td>🔴 AuthenticationError</td><td>401</td><td>Wrong / expired API key</td><td>Admin → LLM Connections → Update API key</td></tr>
+          <tr><td>🟠 RateLimitError</td><td>429</td><td>Too many requests/min</td><td>Enable Rate Limiting in Dataiku, or add exponential backoff</td></tr>
+          <tr><td>🔴 context_length_exceeded</td><td>400</td><td>Prompt too long</td><td>Chunk documents, reduce history, switch to 128k context model</td></tr>
+          <tr><td>🟡 QuotaExceededError</td><td>DSS error</td><td>User hit Dataiku quota</td><td>Admin → LLM → Quotas → Increase limit</td></tr>
+          <tr><td>🔴 ConnectionNotFound</td><td>DSS error</td><td>Wrong LLM_ID format</td><td>Check exact ID in Admin → LLM Connections</td></tr>
+          <tr><td>🟠 TimeoutError</td><td>504</td><td>Model / network too slow</td><td>Increase timeout, use streaming, reduce batch size</td></tr>
+          <tr><td>🟡 JSONDecodeError</td><td>—</td><td>LLM returned invalid JSON</td><td>Add retry, strip code fences, improve system prompt</td></tr>
+          <tr><td>🔴 EmbeddingDimMismatch</td><td>—</td><td>Model changed between index/query</td><td>Always use the same embedding model for both operations</td></tr>
+          <tr><td>🟠 HF startup failure</td><td>—</td><td>Python version mismatch</td><td>Local HF requires Python 3.10–3.12 in v14.3+</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ╔═══════════════════════════════════════════════╗ -->
+  <!-- ║  SLIDE 13 — ERROR HANDLING CODE              ║ -->
+  <!-- ╚═══════════════════════════════════════════════╝ -->
+  <div class="slide" id="s13">
+    <div class="kicker">Section 6 — Common Errors</div>
+    <h2>Production-Grade Error Handling Pattern</h2>
+    <pre style="font-size:.72rem;"><code><span class="kw">import</span> time, dataiku
+
+<span class="kw">def</span> <span class="fn">call_llm_with_retry</span>(llm_id, system_prompt, user_prompt, max_retries<span class="op">=</span><span class="nm">3</span>):
+    client <span class="op">=</span> dataiku.<span class="fn">api_client</span>()
+    llm    <span class="op">=</span> client.<span class="fn">get_llm</span>(llm_id)
+
+    <span class="kw">for</span> attempt <span class="kw">in</span> <span class="fn">range</span>(<span class="nm">1</span>, max_retries <span class="op">+</span> <span class="nm">1</span>):
+        <span class="kw">try</span>:
+            q <span class="op">=</span> llm.<span class="fn">new_completion</span>()
+            q.<span class="fn">with_message</span>(system_prompt, role<span class="op">=</span><span class="st">"system"</span>)
+            q.<span class="fn">with_message</span>(user_prompt)
+            <span class="kw">return</span> q.<span class="fn">execute</span>().text
+
+        <span class="kw">except</span> <span class="fn">Exception</span> <span class="kw">as</span> e:
+            err <span class="op">=</span> <span class="fn">str</span>(e).<span class="fn">lower</span>()
+
+            <span class="kw">if</span> <span class="st">"401"</span> <span class="kw">in</span> err <span class="kw">or</span> <span class="st">"unauthorized"</span> <span class="kw">in</span> err:
+                <span class="kw">raise</span> <span class="fn">RuntimeError</span>(<span class="st">"Auth failed — ask admin to check API key."</span>) <span class="kw">from</span> e
+
+            <span class="kw">elif</span> <span class="st">"context_length"</span> <span class="kw">in</span> err:
+                <span class="kw">raise</span> <span class="fn">ValueError</span>(<span class="st">"Prompt too long — chunk document or use 128k model."</span>) <span class="kw">from</span> e
+
+            <span class="kw">elif</span> <span class="st">"429"</span> <span class="kw">in</span> err <span class="kw">or</span> <span class="st">"rate_limit"</span> <span class="kw">in</span> err:
+                wait <span class="op">=</span> <span class="nm">2.0</span> <span class="op">*</span> (<span class="nm">2</span> <span class="op">**</span> (attempt <span class="op">-</span> <span class="nm">1</span>))  <span class="cm"># exponential back-off</span>
+                <span class="fn">print</span>(<span class="st">f"Rate limit — waiting {wait}s..."</span>)
+                time.<span class="fn">sleep</span>(wait)
+
+            <span class="kw">else</span>:
+                <span class="kw">raise</span>   <span class="cm"># unknown — don't swallow</span>
+
+    <span class="kw">raise</span> <span class="fn">RuntimeError</span>(<span class="st">"All retries exhausted."</span>)</code></pre>
+    <div class="card green" style="margin-top:12px;">
+      <h3>✅ Pattern Summary</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+        <span class="tag red">401 → raise immediately</span>
+        <span class="tag amber">token limit → re-chunk</span>
+        <span class="tag blue">429 → exponential backoff</span>
+        <span class="tag purple">timeout → retry</span>
+        <span class="tag green">unknown → re-raise (don't hide)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ╔═══════════════════════════════════════════════╗ -->
+  <!-- ║  SLIDE 14 — ACADEMY                          ║ -->
+  <!-- ╚═══════════════════════════════════════════════╝ -->
+  <div class="slide" id="s14">
+    <div class="kicker">Section 7 — Dataiku Academy</div>
+    <h2>Official Training &amp; Certifications</h2>
+    <div class="col2">
+      <div>
+        <h3 style="margin-bottom:14px;">Recommended Courses for AIF Team</h3>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div class="card blue" style="display:flex;gap:12px;align-items:center;padding:14px 16px;">
+            <div style="font-size:1.4rem;">🤖</div>
+            <div><div style="font-weight:600;font-size:.88rem;">Generative AI with Dataiku</div><div style="font-size:.77rem;color:var(--muted);">LLM Mesh · Prompt Studio · RAG · Agents · Knowledge Banks</div></div>
+            <span class="tag green" style="margin-left:auto;">⭐ Start here</span>
+          </div>
+          <div class="card purple" style="display:flex;gap:12px;align-items:center;padding:14px 16px;">
+            <div style="font-size:1.4rem;">🧑‍💻</div>
+            <div><div style="font-weight:600;font-size:.88rem;">Python for Dataiku</div><div style="font-size:.77rem;color:var(--muted);">Dataiku Python API · Notebooks · Code Recipes</div></div>
+          </div>
+          <div class="card amber" style="display:flex;gap:12px;align-items:center;padding:14px 16px;">
+            <div style="font-size:1.4rem;">🏭</div>
+            <div><div style="font-weight:600;font-size:.88rem;">MLOps Practitioner</div><div style="font-size:.77rem;color:var(--muted);">Deployment · Monitoring · Drift · API Node</div></div>
+          </div>
+          <div class="card green" style="display:flex;gap:12px;align-items:center;padding:14px 16px;">
+            <div style="font-size:1.4rem;">🚀</div>
+            <div><div style="font-weight:600;font-size:.88rem;">Advanced Designer</div><div style="font-size:.77rem;color:var(--muted);">Plugins · APIs · Advanced Flow</div></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <h3 style="margin-bottom:14px;">Certification Path</h3>
+        <div class="timeline">
+          <div class="tl-item">
+            <div class="tl-dot" style="color:#60a5fa;border-color:#60a5fa;font-size:.65rem;">1</div>
+            <div class="tl-body"><div class="tl-title">Core Designer</div><div class="tl-desc">Foundation for all Dataiku users</div></div>
+          </div>
+          <div class="tl-item">
+            <div class="tl-dot" style="color:#a78bfa;border-color:#a78bfa;font-size:.65rem;">2</div>
+            <div class="tl-body"><div class="tl-title">ML Practitioner</div><div class="tl-desc">ML/AI workloads, AutoML</div></div>
+          </div>
+          <div class="tl-item">
+            <div class="tl-dot" style="color:#34d399;border-color:#34d399;font-size:.65rem;">3</div>
+            <div class="tl-body"><div class="tl-title">MLOps Practitioner</div><div class="tl-desc">Production deployment &amp; monitoring</div></div>
+          </div>
+          <div class="tl-item">
+            <div class="tl-dot" style="color:#fbbf24;border-color:#fbbf24;font-size:.65rem;">4</div>
+            <div class="tl-body"><div class="tl-title">Generative AI Practitioner ✨</div><div class="tl-desc">LLM Mesh, Agents, RAG — newest cert</div></div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:14px;">
+          <h3>📎 Resources</h3>
+          <ul class="styled" style="margin-top:6px;">
+            <li><a href="https://academy.dataiku.com" target="_blank" style="color:#60a5fa;">academy.dataiku.com</a></li>
+            <li><a href="https://doc.dataiku.com/dss/latest/generative-ai/index.html" target="_blank" style="color:#60a5fa;">doc.dataiku.com → Generative AI</a></li>
+            <li><a href="https://community.dataiku.com" target="_blank" style="color:#60a5fa;">community.dataiku.com</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ╔═══════════════════════════════════════════════╗ -->
+  <!-- ║  SLIDE 15 — THINGS TO REMEMBER               ║ -->
+  <!-- ╚═══════════════════════════════════════════════╝ -->
+  <div class="slide" id="s15">
+    <div class="kicker">Section 8 — Things to Remember</div>
+    <h2>Pre-Project Checklist</h2>
+    <div class="col2">
+      <div>
+        <div class="card" style="margin-bottom:14px;">
+          <h3 style="margin-bottom:12px;">Before you start building</h3>
+          <div class="checklist">
+            <div class="check-item"><div class="check-box done"></div>Confirm which LLM connections are available (ask admin)</div>
+            <div class="check-item"><div class="check-box done"></div>Understand data residency requirements (EU? on-prem?)</div>
+            <div class="check-item"><div class="check-box done"></div>Agree on model for each step (embed ≠ complete ≠ rerank)</div>
+            <div class="check-item"><div class="check-box done"></div>Estimate token counts &amp; monthly cost before scaling</div>
+            <div class="check-item"><div class="check-box done"></div>Never hard-code API keys — always use Dataiku connections</div>
+            <div class="check-item"><div class="check-box done"></div>Test in Prompt Studio before building a Flow recipe</div>
+            <div class="check-item"><div class="check-box done"></div>Enable Guardrails for customer-facing applications</div>
+          </div>
+        </div>
+        <div class="card amber">
+          <h3>Token Golden Rules</h3>
+          <table style="font-size:.8rem;margin-top:8px;">
+            <tbody>
+              <tr><td>English words per token</td><td style="color:#fbbf24;">~0.75</td></tr>
+              <tr><td>A4 page → tokens</td><td style="color:#fbbf24;">~500–700</td></tr>
+              <tr><td>Context limit (GPT-4o)</td><td style="color:#fbbf24;">128k tokens</td></tr>
+              <tr><td>Cheapest classification</td><td style="color:#fbbf24;">GPT-4o mini</td></tr>
+              <tr><td>Cheapest embedding</td><td style="color:#fbbf24;">text-embedding-3-small</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <div class="card green" style="margin-bottom:14px;">
+          <h3>Must-Use v14 Features</h3>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px;">
+            <div style="font-size:.82rem;display:flex;gap:8px;"><span style="color:#34d399;font-size:1rem;">▸</span><div><strong>Prompt Studio</strong> — test &amp; compare models without code</div></div>
+            <div style="font-size:.82rem;display:flex;gap:8px;"><span style="color:#34d399;font-size:1rem;">▸</span><div><strong>Agent Hub</strong> — deploy agents for non-technical users</div></div>
+            <div style="font-size:.82rem;display:flex;gap:8px;"><span style="color:#34d399;font-size:1rem;">▸</span><div><strong>Flow Assistant</strong> — describe a pipeline in English</div></div>
+            <div style="font-size:.82rem;display:flex;gap:8px;"><span style="color:#34d399;font-size:1rem;">▸</span><div><strong>SQL Assistant</strong> — AI-powered SQL writing in notebooks</div></div>
+            <div style="font-size:.82rem;display:flex;gap:8px;"><span style="color:#34d399;font-size:1rem;">▸</span><div><strong>Extract Content Recipe</strong> — PDF/DOCX → dataset, no code</div></div>
+            <div style="font-size:.82rem;display:flex;gap:8px;"><span style="color:#34d399;font-size:1rem;">▸</span><div><strong>Agent Evaluation</strong> — quantitatively test agent performance</div></div>
+            <div style="font-size:.82rem;display:flex;gap:8px;"><span style="color:#34d399;font-size:1rem;">▸</span><div><strong>Rate Limiting</strong> — prevents unexpected cost spikes</div></div>
+            <div style="font-size:.82rem;display:flex;gap:8px;"><span style="color:#34d399;font-size:1rem;">▸</span><div><strong>Structured Visual Agents</strong> — reliable multi-step pipelines</div></div>
+          </div>
+        </div>
+        <div class="card blue">
+          <h3>Security Non-Negotiables</h3>
+          <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">
+            <div class="tag red">🔑 API keys → Dataiku Connections only</div>
+            <div class="tag red">🚫 Never log PII-containing prompts in production</div>
+            <div class="tag red">🛡 Enable Guardrails for public-facing apps</div>
+            <div class="tag red">📋 Review audit logs regularly</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ╔═══════════════════════════════════════════════╗ -->
+  <!-- ║  SLIDE 16 — THANK YOU                        ║ -->
+  <!-- ╚═══════════════════════════════════════════════╝ -->
+  <div class="slide hero-bg" id="s16">
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
+      <div style="font-size:3rem;margin-bottom:20px;">🙌</div>
+      <div class="kicker" style="justify-content:center;">End of Session</div>
+      <h1 style="margin-bottom:16px;">Thanks for joining!<br/><span class="grad">Questions?</span></h1>
+      <p style="max-width:500px;color:#94a3b8;margin-bottom:32px;">
+        Open the companion Jupyter notebook for all code examples, token estimators, and section notes.
+      </p>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;margin-bottom:40px;">
+        <a href="https://academy.dataiku.com" target="_blank"
+           style="background:var(--accent);color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:.88rem;">
+          🎓 Dataiku Academy
+        </a>
+        <a href="https://doc.dataiku.com/dss/latest/generative-ai/index.html" target="_blank"
+           style="background:var(--surface2);color:var(--text);border:1px solid var(--border);padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:.88rem;">
+          📘 Official Docs
+        </a>
+        <a href="https://doc.dataiku.com/dss/latest/release_notes/14.html" target="_blank"
+           style="background:var(--surface2);color:var(--text);border:1px solid var(--border);padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:.88rem;">
+          📋 v14 Release Notes
+        </a>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">
+        <span class="tag blue">Dataiku DSS v14.5</span>
+        <span class="tag green">AI Factory Team</span>
+        <span class="tag purple">May 2026</span>
+      </div>
+    </div>
+  </div>
+
+</div><!-- #deck -->
+
+<!-- ── Navigation ─────────────────────────────────────── -->
+<nav id="nav">
+  <button class="nav-btn" id="btn-prev" onclick="go(-1)" title="Previous (←)">‹</button>
+  <div class="dot-nav" id="dots"></div>
+  <span id="slide-counter">1 / 17</span>
+  <button class="nav-btn" id="btn-next" onclick="go(1)" title="Next (→)">›</button>
+</nav>
+
+<div id="kb-hint">← → Space to navigate</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const total  = slides.length;
+  let   cur    = 0;
+  let   prev   = -1;
+
+  // Build dots
+  const dotsEl = document.getElementById('dots');
+  slides.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.onclick = () => goTo(i);
+    dotsEl.appendChild(d);
+  });
+  const dots = dotsEl.querySelectorAll('.dot');
+
+  function goTo(n) {
+    if (n < 0 || n >= total || n === cur) return;
+    slides[cur].classList.remove('active');
+    slides[cur].classList.add('exit');
+    const exitSlide = slides[cur];
+    setTimeout(() => exitSlide.classList.remove('exit'), 460);
+    prev = cur;
+    cur  = n;
+    slides[cur].classList.add('active');
+    slides[cur].scrollTop = 0;
+    dots.forEach((d, i) => d.classList.toggle('active', i === cur));
+    document.getElementById('slide-counter').textContent = `${cur + 1} / ${total}`;
+    document.getElementById('progress').style.width = `${((cur) / (total - 1)) * 100}%`;
+    document.getElementById('btn-prev').disabled = cur === 0;
+    document.getElementById('btn-next').disabled = cur === total - 1;
+  }
+
+  function go(dir) { goTo(cur + dir); }
+
+  // Keyboard
+  document.addEventListener('keydown', e => {
+    if (['ArrowRight','ArrowDown','Space',' '].includes(e.key)) { e.preventDefault(); go(1); }
+    if (['ArrowLeft','ArrowUp'].includes(e.key)) { e.preventDefault(); go(-1); }
+    if (e.key === 'Home') goTo(0);
+    if (e.key === 'End')  goTo(total - 1);
+  });
+
+  // Touch swipe
+  let tx = 0;
+  document.addEventListener('touchstart', e => { tx = e.touches[0].clientX; }, {passive:true});
+  document.addEventListener('touchend',   e => {
+    const diff = tx - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 50) go(diff > 0 ? 1 : -1);
+  }, {passive:true});
+
+  // Init
+  goTo(0);
+  document.getElementById('btn-prev').disabled = true;
+  document.getElementById('progress').style.width = '0%';
+</script>
+</body>
+</html>
